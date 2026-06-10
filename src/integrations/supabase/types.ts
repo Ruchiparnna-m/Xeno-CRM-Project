@@ -14,7 +14,211 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      campaigns: {
+        Row: {
+          audience_size: number
+          created_at: string
+          delivered_count: number
+          failed_count: number
+          id: string
+          message: string
+          name: string
+          segment_id: string | null
+          sent_count: number
+          status: string
+          user_id: string
+        }
+        Insert: {
+          audience_size?: number
+          created_at?: string
+          delivered_count?: number
+          failed_count?: number
+          id?: string
+          message: string
+          name: string
+          segment_id?: string | null
+          sent_count?: number
+          status?: string
+          user_id: string
+        }
+        Update: {
+          audience_size?: number
+          created_at?: string
+          delivered_count?: number
+          failed_count?: number
+          id?: string
+          message?: string
+          name?: string
+          segment_id?: string | null
+          sent_count?: number
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_segment_id_fkey"
+            columns: ["segment_id"]
+            isOneToOne: false
+            referencedRelation: "segments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      communications: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          customer_id: string
+          error: string | null
+          id: string
+          rendered_message: string
+          status: string
+          updated_at: string
+          user_id: string
+          vendor_message_id: string | null
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          customer_id: string
+          error?: string | null
+          id?: string
+          rendered_message: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          vendor_message_id?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          customer_id?: string
+          error?: string | null
+          id?: string
+          rendered_message?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          vendor_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communications_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communications_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customers: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          last_active_at: string | null
+          name: string | null
+          phone: string | null
+          total_spend: number
+          user_id: string
+          visit_count: number
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          last_active_at?: string | null
+          name?: string | null
+          phone?: string | null
+          total_spend?: number
+          user_id: string
+          visit_count?: number
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          last_active_at?: string | null
+          name?: string | null
+          phone?: string | null
+          total_spend?: number
+          user_id?: string
+          visit_count?: number
+        }
+        Relationships: []
+      }
+      orders: {
+        Row: {
+          amount: number
+          created_at: string
+          customer_id: string
+          id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          customer_id: string
+          id?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          customer_id?: string
+          id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      segments: {
+        Row: {
+          audience_size: number
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          rules: Json
+          user_id: string
+        }
+        Insert: {
+          audience_size?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          rules?: Json
+          user_id: string
+        }
+        Update: {
+          audience_size?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          rules?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
