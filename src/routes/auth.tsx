@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -49,6 +50,22 @@ function AuthPage() {
     }
   };
 
+  const google = async () => {
+    setLoading(true);
+    try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin + "/dashboard",
+      });
+      if (result.error) throw new Error(result.error.message ?? "Google sign-in failed");
+      if (result.redirected) return;
+      navigate({ to: "/dashboard" });
+    } catch (err: any) {
+      toast.error(err.message ?? "Google sign-in failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted px-4">
       <Card className="w-full max-w-sm">
@@ -59,6 +76,12 @@ function AuthPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <Button type="button" variant="outline" className="w-full" onClick={google} disabled={loading}>
+            Continue with Google
+          </Button>
+          <div className="flex items-center gap-2 my-4 text-xs text-muted-foreground">
+            <div className="h-px bg-border flex-1" /> or <div className="h-px bg-border flex-1" />
+          </div>
           <form onSubmit={submit} className="space-y-3">
             <Input type="email" placeholder="you@brand.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
             <Input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />

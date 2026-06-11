@@ -41,47 +41,49 @@ export const seedDemoData = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
     const { count } = await supabase
-      .from("customers")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId);
+      .from("customers").select("*", { count: "exact", head: true }).eq("user_id", userId);
     if ((count ?? 0) > 0) return { skipped: true, customers: count };
 
-    const firstNames = ["Aarav", "Vivaan", "Aditya", "Vihaan", "Arjun", "Sai", "Ayaan", "Krishna", "Ishaan", "Ananya", "Diya", "Saanvi", "Aanya", "Pari", "Riya", "Myra"];
-    const lastNames = ["Sharma", "Verma", "Iyer", "Reddy", "Khan", "Singh", "Patel", "Mehta", "Gupta", "Roy"];
-    const customers = Array.from({ length: 60 }).map((_, i) => {
+    const firstNames = ["Aarav","Vivaan","Aditya","Vihaan","Arjun","Sai","Ayaan","Krishna","Ishaan","Ananya","Diya","Saanvi","Aanya","Pari","Riya","Myra","Rohan","Kavya","Ira","Neha","Rahul","Priya","Karan","Tara"];
+    const lastNames = ["Sharma","Verma","Iyer","Reddy","Khan","Singh","Patel","Mehta","Gupta","Roy","Kapoor","Nair","Bose","Joshi","Malhotra"];
+
+    const TOTAL = 5000;
+    const customers = Array.from({ length: TOTAL }).map((_, i) => {
       const fn = firstNames[i % firstNames.length];
-      const ln = lastNames[i % lastNames.length];
-      const total = Math.floor(Math.random() * 30000);
-      const visits = Math.floor(Math.random() * 25);
-      const daysAgo = Math.floor(Math.random() * 180);
-      const lastActive = new Date(Date.now() - daysAgo * 86400000).toISOString();
+      const ln = lastNames[Math.floor(i / firstNames.length) % lastNames.length];
       return {
         user_id: userId,
         email: `${fn.toLowerCase()}.${ln.toLowerCase()}${i}@example.com`,
         name: `${fn} ${ln}`,
         phone: `+91${9000000000 + Math.floor(Math.random() * 99999999)}`,
-        total_spend: total,
-        visit_count: visits,
-        last_active_at: lastActive,
+        total_spend: Math.floor(Math.random() * 50000),
+        visit_count: Math.floor(Math.random() * 30),
+        last_active_at: new Date(Date.now() - Math.floor(Math.random() * 365) * 86400000).toISOString(),
       };
     });
-    const { data: insertedCustomers, error } = await supabase.from("customers").insert(customers).select("id");
-    if (error) throw new Error(error.message);
 
-    // a few orders per customer
+    const insertedIds: string[] = [];
+    const CHUNK = 500;
+    for (let i = 0; i < customers.length; i += CHUNK) {
+      const { data, error } = await supabase
+        .from("customers").insert(customers.slice(i, i + CHUNK)).select("id");
+      if (error) throw new Error(error.message);
+      for (const r of data ?? []) insertedIds.push(r.id);
+    }
+
     const orders: Array<{ user_id: string; customer_id: string; amount: number; status: string }> = [];
-    for (const c of insertedCustomers ?? []) {
-      const n = Math.floor(Math.random() * 4);
+    for (const id of insertedIds) {
+      const n = Math.floor(Math.random() * 8);
       for (let i = 0; i < n; i++) {
         orders.push({
-          user_id: userId,
-          customer_id: c.id,
-          amount: Math.floor(Math.random() * 5000) + 200,
-          status: "completed",
+          user_id: userId, customer_id: id,
+          amount: Math.floor(Math.random() * 5000) + 200, status: "completed",
         });
       }
     }
-    if (orders.length) await supabase.from("orders").insert(orders);
+    for (let i = 0; i < orders.length; i += 1000) {
+      await supabase.from("orders").insert(orders.slice(i, i + 1000));
+    }
     return { skipped: false, customers: customers.length, orders: orders.length };
   });
 
