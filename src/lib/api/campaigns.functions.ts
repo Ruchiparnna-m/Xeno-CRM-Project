@@ -1,4 +1,4 @@
-import { createServerFn } from "@tanstack/react-start";
+import { createServerFn, getRequest } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
@@ -41,7 +41,6 @@ export const getCampaignDetail = createServerFn({ method: "GET" })
     return { campaign, communications: comms ?? [] };
   });
 
-// Re-use rule eval logic
 function customerMatches(c: any, rules: any): boolean {
   if (!rules?.conditions?.length) return true;
   const evalCond = (cond: any) => {
@@ -65,6 +64,19 @@ function customerMatches(c: any, rules: any): boolean {
   return rules.op === "OR" ? rules.conditions.some(evalCond) : rules.conditions.every(evalCond);
 }
 
+/**
+ * Campaign send flow (matches the assignment's "stubbed vendor + async receipt" architecture):
+ *
+ *  1. Resolve the segment audience.
+ *  2. INSERT one `communications` row per matched customer (status: PENDING).
+ *  3. Dispatch the batch to the stubbed vendor endpoint `/api/public/vendor/send`.
+ *  4. The vendor processes the batch asynchronously (per-message latency,
+ *     90% delivered / 10% failed), and POSTs delivery receipts (out of order,
+ *     micro-batched) to the CRM receipt endpoint `/api/public/crm/receipt`.
+ *  5. The receipt endpoint batch-updates `communications` and rolls campaign counters.
+ *
+ * The CRM serverFn returns as soon as the audience is queued — true async fan-out.
+ */
 export const createAndSendCampaign = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
@@ -76,21 +88,19 @@ export const createAndSendCampaign = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    // Load segment + customers
+    const req = getRequest();
+    const origin = new URL(req.url).origin;
+
     const { data: segment, error: segErr } = await supabase
-      .from("segments")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("id", data.segment_id)
-      .single();
+      .from("segments").select("*").eq("user_id", userId).eq("id", data.segment_id).single();
     if (segErr) throw new Error(segErr.message);
+
     const { data: customers } = await supabase
       .from("customers")
-      .select("id,name,email,total_spend,visit_count,last_active_at")
+      .select("id,name,email,phone,total_spend,visit_count,last_active_at")
       .eq("user_id", userId);
     const matched = (customers ?? []).filter((c) => customerMatches(c, segment.rules));
 
-    // Create campaign
     const { data: campaign, error: cErr } = await supabase
       .from("campaigns")
       .insert({
@@ -100,17 +110,15 @@ export const createAndSendCampaign = createServerFn({ method: "POST" })
         message: data.message,
         status: "sending",
         audience_size: matched.length,
-      })
-      .select()
-      .single();
+        sent_count: matched.length,
+      }).select().single();
     if (cErr) throw new Error(cErr.message);
 
     if (matched.length === 0) {
       await supabase.from("campaigns").update({ status: "completed" }).eq("id", campaign.id);
-      return { campaign_id: campaign.id, audience: 0, delivered: 0, failed: 0 };
+      return { campaign_id: campaign.id, audience: 0, queued: 0 };
     }
 
-    // Insert communications PENDING
     const commsRows = matched.map((c) => ({
       user_id: userId,
       campaign_id: campaign.id,
@@ -118,54 +126,44 @@ export const createAndSendCampaign = createServerFn({ method: "POST" })
       rendered_message: renderMessage(data.message, c),
       status: "PENDING",
     }));
-    const { data: insertedComms, error: ciErr } = await supabase.from("communications").insert(commsRows).select("id,customer_id,rendered_message");
+    const { data: inserted, error: ciErr } = await supabase
+      .from("communications").insert(commsRows).select("id,customer_id,rendered_message");
     if (ciErr) throw new Error(ciErr.message);
 
-    // Simulate stubbed vendor: 90% delivered / 10% failed, batch update
-    const delivered: string[] = [];
-    const failed: string[] = [];
-    for (const c of insertedComms ?? []) {
-      if (Math.random() < 0.9) delivered.push(c.id);
-      else failed.push(c.id);
-    }
+    const customerById = new Map(matched.map((c) => [c.id, c]));
 
-    // Batch updates
-    if (delivered.length) {
-      await supabase
-        .from("communications")
-        .update({
-          status: "DELIVERED",
-          vendor_message_id: `vendor_${Math.random().toString(36).slice(2, 10)}`,
-          updated_at: new Date().toISOString(),
-        })
-        .in("id", delivered);
-    }
-    if (failed.length) {
-      await supabase
-        .from("communications")
-        .update({
-          status: "FAILED",
-          error: "Simulated vendor failure",
-          updated_at: new Date().toISOString(),
-        })
-        .in("id", failed);
-    }
+    // Dispatch to stubbed vendor in batches of 100 (don't await — true fire-and-forget).
+    const batchSize = 100;
+    const callbackUrl = `${origin}/api/public/crm/receipt`;
+    const vendorUrl = `${origin}/api/public/vendor/send`;
 
-    await supabase
-      .from("campaigns")
-      .update({
-        status: "completed",
-        sent_count: matched.length,
-        delivered_count: delivered.length,
-        failed_count: failed.length,
-      })
-      .eq("id", campaign.id);
+    const dispatches: Promise<unknown>[] = [];
+    for (let i = 0; i < (inserted ?? []).length; i += batchSize) {
+      const chunk = (inserted ?? []).slice(i, i + batchSize);
+      const payload = {
+        campaign_id: campaign.id,
+        user_id: userId,
+        callback_url: callbackUrl,
+        messages: chunk.map((row) => ({
+          communication_id: row.id,
+          to: (customerById.get(row.customer_id) as any)?.phone ?? "",
+          body: row.rendered_message,
+        })),
+      };
+      dispatches.push(
+        fetch(vendorUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }).catch((e) => console.error("vendor dispatch error", e)),
+      );
+    }
+    await Promise.allSettled(dispatches);
 
     return {
       campaign_id: campaign.id,
       audience: matched.length,
-      delivered: delivered.length,
-      failed: failed.length,
+      queued: matched.length,
     };
   });
 
