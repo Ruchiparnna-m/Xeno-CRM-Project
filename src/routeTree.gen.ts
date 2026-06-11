@@ -17,6 +17,10 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedCustomersRouteImport } from './routes/_authenticated/customers'
 import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
 import { Route as AuthenticatedCampaignsRouteImport } from './routes/_authenticated/campaigns'
+import { Route as ApiPublicVendorSendRouteImport } from './routes/api/public/vendor.send'
+import { Route as ApiPublicIngestOrdersRouteImport } from './routes/api/public/ingest.orders'
+import { Route as ApiPublicIngestCustomersRouteImport } from './routes/api/public/ingest.customers'
+import { Route as ApiPublicCrmReceiptRouteImport } from './routes/api/public/crm.receipt'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -57,6 +61,27 @@ const AuthenticatedCampaignsRoute = AuthenticatedCampaignsRouteImport.update({
   path: '/campaigns',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicVendorSendRoute = ApiPublicVendorSendRouteImport.update({
+  id: '/api/public/vendor/send',
+  path: '/api/public/vendor/send',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicIngestOrdersRoute = ApiPublicIngestOrdersRouteImport.update({
+  id: '/api/public/ingest/orders',
+  path: '/api/public/ingest/orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicIngestCustomersRoute =
+  ApiPublicIngestCustomersRouteImport.update({
+    id: '/api/public/ingest/customers',
+    path: '/api/public/ingest/customers',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicCrmReceiptRoute = ApiPublicCrmReceiptRouteImport.update({
+  id: '/api/public/crm/receipt',
+  path: '/api/public/crm/receipt',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -66,6 +91,10 @@ export interface FileRoutesByFullPath {
   '/customers': typeof AuthenticatedCustomersRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/segments': typeof AuthenticatedSegmentsRoute
+  '/api/public/crm/receipt': typeof ApiPublicCrmReceiptRoute
+  '/api/public/ingest/customers': typeof ApiPublicIngestCustomersRoute
+  '/api/public/ingest/orders': typeof ApiPublicIngestOrdersRoute
+  '/api/public/vendor/send': typeof ApiPublicVendorSendRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -75,6 +104,10 @@ export interface FileRoutesByTo {
   '/customers': typeof AuthenticatedCustomersRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/segments': typeof AuthenticatedSegmentsRoute
+  '/api/public/crm/receipt': typeof ApiPublicCrmReceiptRoute
+  '/api/public/ingest/customers': typeof ApiPublicIngestCustomersRoute
+  '/api/public/ingest/orders': typeof ApiPublicIngestOrdersRoute
+  '/api/public/vendor/send': typeof ApiPublicVendorSendRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -86,6 +119,10 @@ export interface FileRoutesById {
   '/_authenticated/customers': typeof AuthenticatedCustomersRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/segments': typeof AuthenticatedSegmentsRoute
+  '/api/public/crm/receipt': typeof ApiPublicCrmReceiptRoute
+  '/api/public/ingest/customers': typeof ApiPublicIngestCustomersRoute
+  '/api/public/ingest/orders': typeof ApiPublicIngestOrdersRoute
+  '/api/public/vendor/send': typeof ApiPublicVendorSendRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -97,6 +134,10 @@ export interface FileRouteTypes {
     | '/customers'
     | '/dashboard'
     | '/segments'
+    | '/api/public/crm/receipt'
+    | '/api/public/ingest/customers'
+    | '/api/public/ingest/orders'
+    | '/api/public/vendor/send'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -106,6 +147,10 @@ export interface FileRouteTypes {
     | '/customers'
     | '/dashboard'
     | '/segments'
+    | '/api/public/crm/receipt'
+    | '/api/public/ingest/customers'
+    | '/api/public/ingest/orders'
+    | '/api/public/vendor/send'
   id:
     | '__root__'
     | '/'
@@ -116,12 +161,20 @@ export interface FileRouteTypes {
     | '/_authenticated/customers'
     | '/_authenticated/dashboard'
     | '/_authenticated/segments'
+    | '/api/public/crm/receipt'
+    | '/api/public/ingest/customers'
+    | '/api/public/ingest/orders'
+    | '/api/public/vendor/send'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ApiPublicCrmReceiptRoute: typeof ApiPublicCrmReceiptRoute
+  ApiPublicIngestCustomersRoute: typeof ApiPublicIngestCustomersRoute
+  ApiPublicIngestOrdersRoute: typeof ApiPublicIngestOrdersRoute
+  ApiPublicVendorSendRoute: typeof ApiPublicVendorSendRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -182,6 +235,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCampaignsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/vendor/send': {
+      id: '/api/public/vendor/send'
+      path: '/api/public/vendor/send'
+      fullPath: '/api/public/vendor/send'
+      preLoaderRoute: typeof ApiPublicVendorSendRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/ingest/orders': {
+      id: '/api/public/ingest/orders'
+      path: '/api/public/ingest/orders'
+      fullPath: '/api/public/ingest/orders'
+      preLoaderRoute: typeof ApiPublicIngestOrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/ingest/customers': {
+      id: '/api/public/ingest/customers'
+      path: '/api/public/ingest/customers'
+      fullPath: '/api/public/ingest/customers'
+      preLoaderRoute: typeof ApiPublicIngestCustomersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/crm/receipt': {
+      id: '/api/public/crm/receipt'
+      path: '/api/public/crm/receipt'
+      fullPath: '/api/public/crm/receipt'
+      preLoaderRoute: typeof ApiPublicCrmReceiptRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -208,6 +289,10 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ApiPublicCrmReceiptRoute: ApiPublicCrmReceiptRoute,
+  ApiPublicIngestCustomersRoute: ApiPublicIngestCustomersRoute,
+  ApiPublicIngestOrdersRoute: ApiPublicIngestOrdersRoute,
+  ApiPublicVendorSendRoute: ApiPublicVendorSendRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
