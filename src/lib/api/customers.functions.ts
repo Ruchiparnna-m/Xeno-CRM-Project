@@ -84,8 +84,25 @@ export const seedDemoData = createServerFn({ method: "POST" })
     for (let i = 0; i < orders.length; i += 1000) {
       await supabase.from("orders").insert(orders.slice(i, i + 1000));
     }
-    return { skipped: false, customers: customers.length, orders: orders.length };
+
+    // Seed demo segments
+    const demoSegments = [
+      { name: "VIP big spenders", description: "Customers who spent over ₹30,000", rules: { op: "AND", conditions: [{ field: "total_spend", operator: ">", value: 30000 }] } },
+      { name: "Lapsed shoppers", description: "Inactive for 60+ days", rules: { op: "AND", conditions: [{ field: "days_inactive", operator: ">", value: 60 }] } },
+      { name: "Active regulars", description: "10+ visits and active recently", rules: { op: "AND", conditions: [{ field: "visit_count", operator: ">", value: 10 }, { field: "days_inactive", operator: "<", value: 30 }] } },
+    ];
+    const segmentRows: any[] = [];
+    for (const s of demoSegments) {
+      const { data: seg } = await supabase.from("segments").insert({
+        user_id: userId, name: s.name, description: s.description, rules: s.rules, audience_size: 0,
+      }).select().single();
+      if (seg) segmentRows.push(seg);
+    }
+
+    return { skipped: false, customers: customers.length, orders: orders.length, segments: segmentRows.length };
   });
+
+
 
 export const ingestCustomer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
